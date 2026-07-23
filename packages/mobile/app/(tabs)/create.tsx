@@ -27,8 +27,9 @@ import { pushPendingExpenses } from "../../lib/sync";
 import { useIsOnline } from "../../lib/network";
 import { CURRENCIES, PAYMENT_MODES } from "../../lib/currencies";
 import { colors, radius, spacing } from "../../lib/theme";
+import { SelectField } from "../../components/SelectField";
 
-type Option = { id: number; name: string };
+type Option = { id: number; name: string; code?: string };
 
 export default function CreateExpense() {
   const router = useRouter();
@@ -155,30 +156,32 @@ export default function CreateExpense() {
     }
   };
 
+  const chantierOptions = chantiers.map((c) => ({ value: c.id, label: c.name, sublabel: c.code }));
+  const categoryOptions = categories.map((c) => ({ value: c.id, label: c.name }));
+  const paymentModeOptions = PAYMENT_MODES.map((p) => ({ value: p.value, label: p.label }));
+  const currencyOptions = CURRENCIES.map((c) => ({ value: c, label: c }));
+
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : "height"} keyboardVerticalOffset={0}>
         <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
           <Text style={styles.title}>Nouvelle dépense</Text>
 
-          <Text style={styles.label}>Chantier</Text>
-          <View style={styles.chipWrap}>
-            {chantiers.map((c) => (
-              <Pressable key={c.id} style={[styles.chip, chantierId === c.id && styles.chipActive]} onPress={() => setChantierId(c.id)}>
-                <Text style={[styles.chipText, chantierId === c.id && styles.chipTextActive]}>{c.name}</Text>
-              </Pressable>
-            ))}
-            {!chantiers.length && <Text style={styles.hint}>Aucun chantier en cache — connectez-vous une fois en ligne.</Text>}
-          </View>
+          <SelectField
+            label="Chantier"
+            value={chantierId}
+            options={chantierOptions}
+            onChange={(v) => setChantierId(Number(v))}
+            placeholder={chantiers.length ? "Choisir un chantier" : "Aucun chantier en cache"}
+          />
 
-          <Text style={styles.label}>Catégorie</Text>
-          <View style={styles.chipWrap}>
-            {categories.map((c) => (
-              <Pressable key={c.id} style={[styles.chip, categoryId === c.id && styles.chipActive]} onPress={() => setCategoryId(c.id)}>
-                <Text style={[styles.chipText, categoryId === c.id && styles.chipTextActive]}>{c.name}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <SelectField
+            label="Catégorie"
+            value={categoryId}
+            options={categoryOptions}
+            onChange={(v) => setCategoryId(Number(v))}
+            placeholder="Choisir une catégorie"
+          />
 
           <Text style={styles.label}>Date</Text>
           <Pressable style={styles.dateInput} onPress={() => setShowDatePicker(true)}>
@@ -200,30 +203,24 @@ export default function CreateExpense() {
           <Text style={styles.label}>Montant</Text>
           <View style={styles.amountRow}>
             <TextInput
-              style={[styles.input, { flex: 1 }]}
+              style={[styles.input, { flex: 1.4 }]}
               value={amount}
               onChangeText={setAmount}
               keyboardType="decimal-pad"
               placeholder="0"
               placeholderTextColor={colors.textSecondary}
             />
-            <View style={styles.currencyPicker}>
-              {CURRENCIES.map((cur) => (
-                <Pressable key={cur} style={[styles.currencyChip, currency === cur && styles.chipActive]} onPress={() => setCurrency(cur)}>
-                  <Text style={[styles.chipText, currency === cur && styles.chipTextActive]}>{cur}</Text>
-                </Pressable>
-              ))}
+            <View style={{ flex: 1 }}>
+              <SelectField label="" value={currency} options={currencyOptions} onChange={(v) => setCurrency(String(v))} />
             </View>
           </View>
 
-          <Text style={styles.label}>Mode de paiement</Text>
-          <View style={styles.chipWrap}>
-            {PAYMENT_MODES.map((p) => (
-              <Pressable key={p.value} style={[styles.chip, paymentMode === p.value && styles.chipActive]} onPress={() => setPaymentMode(p.value)}>
-                <Text style={[styles.chipText, paymentMode === p.value && styles.chipTextActive]}>{p.label}</Text>
-              </Pressable>
-            ))}
-          </View>
+          <SelectField
+            label="Mode de paiement"
+            value={paymentMode}
+            options={paymentModeOptions}
+            onChange={(v) => setPaymentMode(String(v))}
+          />
 
           <Text style={styles.label}>Description (optionnel)</Text>
           <TextInput
@@ -236,9 +233,7 @@ export default function CreateExpense() {
           />
 
           <Text style={styles.label}>Justificatif</Text>
-          {photoUri ? (
-            <Image source={{ uri: photoUri }} style={styles.preview} />
-          ) : null}
+          {photoUri ? <Image source={{ uri: photoUri }} style={styles.preview} /> : null}
           <View style={styles.photoRow}>
             <Pressable style={styles.photoButton} onPress={pickFromCamera}>
               <Camera size={20} color={colors.primary} weight="bold" />
@@ -266,12 +261,6 @@ const styles = StyleSheet.create({
   container: { padding: spacing.lg, paddingBottom: spacing.xl * 2 },
   title: { fontFamily: "Poppins_700Bold", fontSize: 24, color: colors.text, marginBottom: spacing.md },
   label: { fontFamily: "Poppins_600SemiBold", fontSize: 14, color: colors.text, marginTop: spacing.md, marginBottom: 6 },
-  hint: { fontFamily: "Poppins_400Regular", fontSize: 13, color: colors.textSecondary },
-  chipWrap: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 9, backgroundColor: colors.surface },
-  chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontFamily: "Poppins_500Medium", fontSize: 13, color: colors.text },
-  chipTextActive: { color: "#fff" },
   dateInput: {
     flexDirection: "row",
     alignItems: "center",
@@ -284,7 +273,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
   },
   dateText: { fontFamily: "Poppins_500Medium", fontSize: 15, color: colors.text },
-  amountRow: { gap: 8 },
+  amountRow: { flexDirection: "row", gap: 8, alignItems: "flex-start" },
   input: {
     borderWidth: 1,
     borderColor: colors.border,
@@ -297,8 +286,6 @@ const styles = StyleSheet.create({
     color: colors.text,
   },
   textArea: { fontFamily: "Poppins_400Regular", fontSize: 14, minHeight: 80, textAlignVertical: "top" },
-  currencyPicker: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 8 },
-  currencyChip: { borderWidth: 1, borderColor: colors.border, borderRadius: 999, paddingHorizontal: 12, paddingVertical: 7, backgroundColor: colors.surface },
   preview: { width: "100%", height: 180, borderRadius: radius.md, marginBottom: spacing.sm },
   photoRow: { flexDirection: "row", gap: spacing.sm },
   photoButton: {
